@@ -15,14 +15,52 @@ const TerminalModule: React.FC<{ addLog: (msg: string, level?: any) => void }> =
         const newHistory = [...history, `> ${cmd}`];
         
         const cleanCmd = cmd.toLowerCase().trim();
-        if (cleanCmd === 'help') {
-            newHistory.push('AVAILABLE COMMANDS:', ' - SCAN: Initiate network probe', ' - LOGS: Show recent system events', ' - WHOAMI: Display identity', ' - CLEAR: Purge terminal history');
-        } else if (cleanCmd === 'scan') {
-            newHistory.push('PROBING_INTERFACES...', 'FOUND 12 CLIENTS ON SUBNET 192.168.1.0/24');
-            addLog('Terminal scan command executed.', 'INFO');
-        } else if (cleanCmd === 'whoami') {
-            newHistory.push('ALVISIA_PRO_SUPERUSER_0x1');
-        } else if (cleanCmd === 'clear') {
+        const args = cleanCmd.split(' ');
+        const baseCmd = args[0];
+
+        if (baseCmd === 'help') {
+            newHistory.push('AVAILABLE COMMANDS:', 
+                ' - SCAN [target]: Initiate network probe', 
+                ' - PING [host]: Test connectivity', 
+                ' - IFCONFIG: Show network interfaces',
+                ' - NETSTAT: List active connections',
+                ' - WHOAMI: Display identity', 
+                ' - UNAME -A: Kernel info',
+                ' - LS: List directory contents',
+                ' - CLEAR: Purge terminal history');
+        } else if (baseCmd === 'scan') {
+            const target = args[1] || '192.168.1.0/24';
+            newHistory.push(`PROBING_${target}...`, 'IDENTIFYING ALIVE HOSTS...');
+            setTimeout(() => {
+                setHistory(prev => [...prev, 'HOST 192.168.1.1 [UP] - GATEWAY', 'HOST 192.168.1.15 [UP] - SMARTPHONE_ANDROID', 'HOST 192.168.1.102 [UP] - LAPTOP_WSL', 'SCAN_COMPLETE: 3 HOSTS ALIVE.']);
+            }, 500);
+            addLog(`Terminal scan started on ${target}`, 'INFO');
+        } else if (baseCmd === 'ping') {
+            const host = args[1] || 'google.com';
+            newHistory.push(`PING ${host} (142.250.67.46): 56 data bytes`);
+            for(let i=0; i<4; i++) {
+                setTimeout(() => {
+                    setHistory(prev => [...prev, `64 bytes from 142.250.67.46: icmp_seq=${i} ttl=118 time=${(20 + Math.random()*10).toFixed(2)} ms`]);
+                }, (i+1) * 300);
+            }
+        } else if (baseCmd === 'ifconfig' || baseCmd === 'ip') {
+            newHistory.push('eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500',
+                           '        inet 172.17.0.2  netmask 255.255.0.0  broadcast 172.17.255.255',
+                           '        ether 02:42:ac:11:00:02  txqueuelen 0  (Ethernet)',
+                           'lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536',
+                           '        inet 127.0.0.1  netmask 255.0.0.0');
+        } else if (baseCmd === 'netstat') {
+            newHistory.push('Active Internet connections (w/o servers)',
+                           'Proto Recv-Q Send-Q Local Address           Foreign Address         State',
+                           'tcp        0      0 172.17.0.2:44332        142.250.67.46:443       ESTABLISHED',
+                           'tcp        0      0 172.17.0.2:51732        52.216.42.128:443       ESTABLISHED');
+        } else if (cleanCmd === 'uname -a') {
+            newHistory.push('Linux alvisia-core 6.1.0-21-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.1.90-1 (2024-05-03) x86_64 GNU/Linux');
+        } else if (baseCmd === 'ls') {
+            newHistory.push('bin/  etc/  home/  lib/  mnt/  opt/  proc/  root/  sys/  tmp/  usr/  var/');
+        } else if (baseCmd === 'whoami') {
+            newHistory.push('alvisia_pro_superuser_0x1');
+        } else if (baseCmd === 'clear') {
             setHistory(['']);
             return;
         } else if (cleanCmd !== '') {

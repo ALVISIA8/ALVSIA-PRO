@@ -21,14 +21,19 @@ const MatrixBackground = ({ active = true }: { active?: boolean }) => {
     const chars = charSet.split("");
 
     const draw = () => {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
       ctx.fillRect(0, 0, width, height);
-
-      ctx.fillStyle = "#0a5ad1"; // Darker blue theme
-      ctx.font = "15px monospace";
 
       for (let i = 0; i < drops.length; i++) {
         const text = chars[Math.floor(Math.random() * chars.length)];
+        
+        // Dynamic colors: alternates between blue and cyan with occasional white glitches
+        const rand = Math.random();
+        if (rand > 0.99) ctx.fillStyle = "#fff";
+        else if (rand > 0.5) ctx.fillStyle = "#00f3ff"; // Cyan
+        else ctx.fillStyle = "#0066ff"; // Blue
+        
+        ctx.font = "12px monospace";
         ctx.fillText(text, i * 20, drops[i] * 20);
 
         if (drops[i] * 20 > height && Math.random() > 0.975) {

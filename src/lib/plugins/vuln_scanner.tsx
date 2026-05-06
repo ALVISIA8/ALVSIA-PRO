@@ -3,24 +3,27 @@ import { Activity, ShieldAlert, Crosshair, Zap, Bug, Server } from 'lucide-react
 import { AlvisiaPlugin, registry } from '../plugins';
 
 const VulnScannerModule: React.FC<{ addLog: (msg: string, level?: any) => void }> = ({ addLog }) => {
+    const [target, setTarget] = useState('192.168.1.1');
     const [scanning, setScanning] = useState(false);
     const [vulns, setVulns] = useState<any[]>([]);
 
-    const scanNetwork = () => {
+    const scanNetwork = async () => {
+        if (!target) return addLog('Please specify a target for scanning.', 'WARNING');
         setScanning(true);
         setVulns([]);
-        addLog('Probing local subnet for vulnerability signatures...', 'INFO');
+        addLog(`Probing target ${target} for known CVEs and misconfigurations...`, 'INFO');
         
-        setTimeout(() => {
-            const found = [
-                { id: 'CVE-2024-2111', severity: 'CRITICAL', title: 'EternalBlue Signature Detected', service: 'SMB v1' },
-                { id: 'MISC-AUTH-04', severity: 'HIGH', title: 'Default Admin Credentials', service: 'HTTP/SSH' },
-                { id: 'CVE-2023-9921', severity: 'MEDIUM', title: 'Outdated SSL Certificate', service: 'HTTPS' }
-            ];
-            setVulns(found);
-            addLog('Vulnerability surface mapping complete. 3 issues found.', 'WARNING');
+        try {
+            const { PentestSuite } = await import('../engines');
+            const results = await PentestSuite.scanVulnerabilities(target);
+            await new Promise(r => setTimeout(r, 1500));
+            addLog(`Found ${results.length} vulnerability signatures.`, results.length > 0 ? 'WARNING' : 'SUCCESS');
+            setVulns(results.map(v => ({ ...v, severity: v.CVSS > 8 ? 'CRITICAL' : v.CVSS > 6 ? 'HIGH' : 'MEDIUM' })));
+        } catch (e) {
+            addLog('Critical error during heuristic analysis.', 'ERROR');
+        } finally {
             setScanning(false);
-        }, 3000);
+        }
     };
 
     return (
@@ -34,14 +37,24 @@ const VulnScannerModule: React.FC<{ addLog: (msg: string, level?: any) => void }
                     <Crosshair className="w-10 h-10 text-red-500 animate-pulse" />
                 </div>
 
-                <button 
-                    onClick={scanNetwork}
-                    disabled={scanning}
-                    className="w-full py-6 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 shadow-lg shadow-red-600/20"
-                >
-                    <Activity className={`w-6 h-6 ${scanning ? 'animate-spin' : ''}`} />
-                    {scanning ? 'SCAN_IN_PROGRESS...' : 'INITIATE_VULN_ASSESSMENT'}
-                </button>
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block ml-1">Target Host / URL</label>
+                    <div className="flex gap-4">
+                        <input 
+                            value={target}
+                            onChange={(e) => setTarget(e.target.value)}
+                            placeholder="Enter IP or Domain..."
+                            className="flex-1 bg-black border border-zinc-800 rounded-xl px-4 py-3 text-zinc-300 font-mono focus:border-red-500 transition-all outline-none"
+                        />
+                        <button 
+                            onClick={scanNetwork}
+                            disabled={scanning}
+                            className="px-8 bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 text-white rounded-xl font-black uppercase text-xs tracking-widest transition-all shadow-lg shadow-red-600/20"
+                        >
+                            {scanning ? 'SCANNING...' : 'SCAN'}
+                        </button>
+                    </div>
+                </div>
 
                 {vulns.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
